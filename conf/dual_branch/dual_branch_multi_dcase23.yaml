@@ -1,0 +1,102 @@
+# path
+meta_data_dir: 'data/meta_data'
+AD_conf_dir: 'uni_detect/conf/'
+
+# datasets
+downstream: 'dcase'
+train_sets: ['dcase23']
+test_sets: ['dcase23']
+machine_type:  # restrictions: 'dev', 'eval', 'bearing', 'fan', ...
+  dcase20: []  # no restriction means all
+  dcase21: []
+  dcase22: []
+  dcase23: []
+
+# data
+input_duration: 10.0  # TODO:
+hop_duration: null  # None
+sample_rate: 16000
+feat_type: 'wav'  # 'wav', 'fbank'
+use_shard: True
+shard_conf:
+  shard_dir: 'data/shard/'
+  num_shards: 1
+
+# preprocess
+norm: False
+norm_conf:
+  norm_type: 'all'  # 'all', 'temporal'
+  MEAN: 13.667465209960938
+  STD: 4.655656337738037
+  coeff: 2
+
+# aug
+speed_perturb: False
+speed_perturb_conf:
+  speeds: [0.8, 0.9, 1.0, 1.1, 1.2]
+  new_label: True
+spec_aug: True
+spec_aug_conf:
+  time_stretch: False
+  freq_mask: False
+  freq_mask_param: 80  # max_len
+  time_mask: True
+  time_mask_param: 80  # max_len
+
+# model
+model_name: 'Kevin_multi'
+model_conf:
+  # ckpt: 'whisper/large-v3_encoder.pt'
+  # ckpt: 'whisper/large-v2_encoder.pt'
+  # ckpt: 'whisper/large-v1_encoder.pt'
+  # ckpt: 'whisper/medium_encoder.pt'
+  use_bias: False
+loss_name: 'arcface'
+aggregation: 'mean'
+emb_size: 256
+task: 'attribute'  # 'attribute', 'machine', 'machine_section', 'section'
+lora: False
+freeze: False
+
+multi_branch: True
+multi_branch_num: 2
+multi_branch_conf:
+  #model_list: []
+  #model_conf: [{},{}]
+  branch_emb_size: [128,128]      # for branch models' output
+  multi_BP: True
+  branch_loss_name: []            # can be omitted if the same with the major loss; only useful when multi_BP: True 
+  branch_loss_weight: []          # can be omitted (=1) if the same with the major learning rate; only useful when multi_BP: True
+  #branch_emb_proj: False
+  #branch_emb_size_after_proj: []  # if flexible_allocate: True, this would only be the initial setting of branch_emb_size_after_proj
+  #flexible_allocate: False        # only useful when branch_emb_proj: True
+
+# training
+accumulate_grad: 8
+max_step: 10000 #20000
+obInterval: 100
+batch_size: 64
+test_batch_size: 64
+optim: adamw  # 'adam', 'adamw'
+optim_conf:
+  lr: 0.005 #0.0001
+  betas: [0.9, 0.98]
+  weight_decay: 0.00001
+scheduler: 'CosineAnnealingWarmupRestarts'
+scheduler_conf:
+  ReduceLROnPlateau:
+    mode: 'min'
+    patience: 5
+  WarmupLR:
+    warmup_steps: 50  # change with accumulate_grad
+  WarmupLRLinear:
+    warmup_steps: 50
+    max_steps: 500
+  CosineAnnealingLR:
+    T_max: 125
+  CosineAnnealingWarmupRestarts:
+    first_cycle_steps: 125
+    cycle_mult: 1
+    max_lr: 0.005  # same with optim_conf
+    min_lr: 0.000001
+    warmup_steps: 10

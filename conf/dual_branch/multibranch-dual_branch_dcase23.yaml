@@ -1,0 +1,137 @@
+# path
+meta_data_dir: 'data/meta_data'
+AD_conf_dir: 'uni_detect/conf/'
+
+# datasets
+downstream: 'dcase'
+train_sets: ['dcase23']
+test_sets: ['dcase23']
+machine_type:  # restrictions: 'dev', 'eval', 'bearing', 'fan', ...
+  dcase20: []  # no restriction means all
+  dcase21: []
+  dcase22: []
+  dcase23: []
+
+# data
+input_duration: 10.0  # TODO:
+hop_duration: null  # None
+comple: pad  # pad, cycle
+sample_rate: 16000
+feat_type: 'wav'  # 'wav', 'fbank', 'both'
+fbank_conf:
+  impl: 'kaldi'  # 'kaldi', 'torchaudio'
+  num_mel_bins: 128
+  frame_length: 25
+  frame_shift: 10
+  dither: 0.0
+  window_type: 'hanning'
+  htk_compat: True
+  use_energy: False
+  shift_15: False
+use_shard: True
+shard_conf:
+  shard_dir: 'data/shard/'
+  num_shards: 1
+
+# preprocess
+norm: False
+norm_conf:
+  norm_type: 'all'  # 'all', 'temporal'
+  MEAN: 13.667465209960938
+  STD: 4.655656337738037
+  coeff: 2
+
+# aug
+speed_perturb: False
+speed_perturb_conf:
+  speeds: [0.8, 0.9, 1.0, 1.1, 1.2]
+  new_label: True
+audio_roll: False
+spec_aug: True
+spec_aug_conf:
+  time_stretch: False
+  freq_mask: True
+  freq_mask_param: 30  # max_len
+  time_mask: True
+  time_mask_param: 30  # max_len
+
+# model
+model_name: 'multibranch'
+model_conf:
+  # ckpt: 'whisper/large-v3_encoder.pt'
+  # ckpt: 'whisper/large-v2_encoder.pt'
+  # ckpt: 'whisper/large-v1_encoder.pt'
+  # ckpt: 'whisper/medium_encoder.pt'
+  # use_bias: False
+  useless: 'but bug arises when {}.keys() happens'
+  for_Multibranch: 'please set model_conf in multi_branch_conf'
+loss_name: arcface
+aggregation: mean
+emb_size: 256
+task: attribute  # 'attribute', 'machine', 'machine_section', 'section'
+lora: False
+freeze: False
+
+multi_branch: True    # whether to use multi_branch
+multi_branch_num: 2   # total number of branches
+multi_branch_conf:    # Dict of branch models' name and configuration
+  model_list: ['Kevin_spectrogram','Kevin_spectrum']
+  model_conf_list: [{             
+        attn_dim_up: ['se','se','se','se'],
+        attn_nhead_up: [4,3,2,2],
+        attn_dim_down: ['se','se','se','se'],
+        attn_nhead_down: [4,3,2,2],
+        attn_on_dpth: False,
+        attn_dim_btw: ['none','none','none','f','t','none'],
+        attn_nhead_btw: [2,4,2,2,2,2], # [7,3,2,2],
+        attn_pool: False},
+        {
+        attn_dim: ['f','f','c'],
+        attn_nhead: [4,4,2],
+        attn_on_dpth: False}]
+  input_type_list: [0,0,0]                # 0:wav (even if not requested!), >1:index for fbank
+  # ^ only useful when feat_type: 'both' / multi_fbank: True
+  # the details about fbank should be set in fbank_conf & spec_aug_conf
+  branch_emb_size: [128,128]              # for branch models' output embedding 
+  multi_BP: False
+  indp_BP: False                          # need to set multi_BP: False
+  # Note that branch loss is calculated based on branch_emb rather than branch_emb_after_proj
+  # So indp_BP: True & branch_emb_proj: True cannot yield reasonable results
+  branch_loss_name: [arcface,arcface]     # can be omitted if the same with the major loss
+  branch_loss_weight: [1.0,1.0]           # default: 1 (the same with major learning rate)
+  branch_emb_proj: False
+  branch_emb_size_after_proj: [128,128]
+  # ^ if flexible_allocate: True, this would only be the initial setting of branch_emb_size_after_proj
+  flexible_allocate: False                # only useful when branch_emb_proj: True
+  # Note that it is legal to set flexible_allocate: True while not (multi_BP/indp_BP)
+  flexible_allocate_interval: 307         # only useful when flexible_allocate: True
+
+# training
+accumulate_grad: 8
+max_step: 10000 #20000
+obInterval: 100
+batch_size: 64
+test_batch_size: 64
+optim: adamw  # 'adam', 'adamw'
+optim_conf:
+  lr: 0.005 #0.0001
+  betas: [0.9, 0.98]
+  weight_decay: 0.00001 #0.005 #0.00001
+scheduler: 'CosineAnnealingWarmupRestarts'
+scheduler_conf:
+  ReduceLROnPlateau:
+    mode: 'min'
+    patience: 5
+  WarmupLR:
+    warmup_steps: 50  # change with accumulate_grad
+  WarmupLRLinear:
+    warmup_steps: 50
+    max_steps: 500
+  CosineAnnealingLR:
+    T_max: 125
+  CosineAnnealingWarmupRestarts:
+    first_cycle_steps: 125
+    cycle_mult: 1
+    max_lr: 0.005  # same with optim_conf
+    min_lr: 0.000001
+    warmup_steps: 10
